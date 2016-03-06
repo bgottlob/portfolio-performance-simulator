@@ -1,8 +1,8 @@
 ## Implementation Plan
 1. Create program to simulate performance of two-stock portfolio with clock seeding the random number generator
     - Givens - correlation, means, standard devs
-        - Take this input from a file
-    - Use matplotlib to plot histograms
+        - <s>Take this input from a file</s>
+    - <s>Use matplotlib to plot histograms</s>
         - Write makefile to automatically pipe output into matplotlib
     - Document completely throughout development
 1. Parallelize this two-stock simulation
