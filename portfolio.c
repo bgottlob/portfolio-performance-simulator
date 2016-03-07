@@ -5,9 +5,6 @@
 #include <time.h>
 #include <math.h>
 
-#define NUM_RUNS 1000
-#define NUM_MONTHS 12
-
 /* Stores a pair of correlated random normal variables */
 struct corr_norm {
     double var1;
@@ -36,6 +33,16 @@ double one_month_portfolio_return(struct risky_asset asset1,
 double one_month_asset_return(double mean, double sigma, double rand_var);
 
 int main(int argc, char **argv) {
+
+    /* TODO: Use options with command line arguments and modify makefile to
+     * play nice with command line arguments */
+    if (argc != 3) {
+        printf("ERROR: You have not provided exactly two arguments");
+        exit(1);
+    }
+    
+    const int NUM_MONTHS = atoi(argv[1]);
+    const int NUM_RUNS = atoi(argv[2]);
 
     // TODO: for portfolio with N assets, number of lines in file is num_assets
     int num_assets = 2;
@@ -85,7 +92,7 @@ int main(int argc, char **argv) {
         if(results_file)
             fprintf(results_file, "%f\n", total_return);
         
-        printf("Total return: %f%%\n", total_return * 100);
+        /* printf("Total return: %f%%\n", total_return * 100); */
 
     }
 
