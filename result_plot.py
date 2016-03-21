@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from decimal import Decimal
 
 with open("results.txt") as results_file:
     results_data = results_file.read()
