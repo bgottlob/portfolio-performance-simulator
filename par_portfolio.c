@@ -57,15 +57,20 @@ int main(int argc, char **argv) {
             printf("Number of threads: %d\n", omp_get_num_threads());
         }*/
 
+        /* Create a random number generator */
+        gsl_rng *rng = initialize_rng();
+
         /* Calculate the monthly portfolio return
          * and add to yearly return accumulator */
         for (int month = 1; month <= NUM_MONTHS; month++) {
-            struct corr_norm rand_vars = two_corr_norm_rvars(corr);
+            struct corr_norm rand_vars = two_corr_norm_rvars(corr, rng);
             double month_ret = one_month_portfolio_return(assets[0], assets[1],
                     rand_vars.var1, rand_vars.var2);
             total_return += month_ret;
         }
 
+        /* Free memory taken by random number generator */
+        free(rng);
 
         if(results_file) {
             #pragma omp critical

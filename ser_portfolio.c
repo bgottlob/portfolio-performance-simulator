@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    //TODO: Get the number of runs and months from the command line args
     
     /* This file will contain the final porfolio returns for all runs */
     FILE *results_file = fopen("results.txt","w");
@@ -50,14 +49,19 @@ int main(int argc, char **argv) {
 
         double total_return = 0;
 
+        /* Create a random number generator */
+        gsl_rng *rng = initialize_rng();
+
         /* Calculate the monthly portfolio return
          * and add to yearly return accumulator */
         for (int month = 1; month <= NUM_MONTHS; month++) {
-            struct corr_norm rand_vars = two_corr_norm_rvars(corr);
+            struct corr_norm rand_vars = two_corr_norm_rvars(corr, rng);
             double month_ret = one_month_portfolio_return(assets[0], assets[1],
                     rand_vars.var1, rand_vars.var2);
             total_return += month_ret;
         }
+
+        free(rng);
 
         if(results_file)
             fprintf(results_file, "%f\n", total_return);
