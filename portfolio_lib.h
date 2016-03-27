@@ -1,3 +1,8 @@
+#ifndef GSL_RNG_H
+#define GSL_RNG_H
+#include <gsl/gsl_rng.h>
+#endif
+
 #ifndef PORTFOLIO_DEFS_H
 #define PORTFOLIO_DEFS_H
 
@@ -15,9 +20,11 @@ struct risky_asset {
     double port_weight;
 };
 
+gsl_rng* initialize_rng();
+
 /* Returns a struct containing two correlated, normally distributed random
  * variables given the correlation coeffcient between them*/
-struct corr_norm two_corr_norm_rvars(double corr);
+struct corr_norm two_corr_norm_rvars(double corr, gsl_rng *sim_rng);
 
 /* Calculates the return of a portfolio for one month given distribution
  * information for two risky assets and two correlated random variables */
