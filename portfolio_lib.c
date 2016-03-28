@@ -3,10 +3,12 @@
 #include <math.h>
 #include <time.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_blas.h>
 
-#ifndef GSL_RNG_H
-#define GSL_RNG_H
+#ifndef GSL_H
+#define GSL_H
 #include <gsl/gsl_rng.h>
+#include <gsl/gsl_matrix.h>
 #endif
 
 /* Creates an RNG that can be used by monte carlo simulations. The clock is 
@@ -41,27 +43,36 @@ gsl_rng* initialize_rng() {
     return res_rng;
 }
 
-struct corr_norm two_corr_norm_rvars(double corr, gsl_rng *sim_rng) {
+gsl_vector* corr_norm_rvars(const int NUM_ASSETS, gsl_rng *rng,
+        gsl_matrix *cholesky) {
 
-    double corr_var1 = gsl_ran_ugaussian(sim_rng);
+    /* Create a vector of normal random variables */
+    gsl_vector *rans = gsl_vector_alloc(NUM_ASSETS);
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        gsl_vector_set(rans,i,gsl_ran_ugaussian(rng));
+    }
 
-    /* Implementing formula for finding two correlated random variables */
-    double corr_var2 = corr * corr_var1 +
-        sqrt(1-pow(corr,2)) * gsl_ran_ugaussian(sim_rng);
-
-    struct corr_norm res;
-    res.var1 = corr_var1;
-    res.var2 = corr_var2;
+    gsl_vector *corr_rans = gsl_vector_alloc(NUM_ASSETS);
     
-    return res;
+    /* Multiply by Cholesky decomposition to generate correlated random
+     * variables */
+    gsl_blas_dgemv(CblasNoTrans, 1, cholesky, rans, 1, corr_rans);
+
+    gsl_vector_free(rans);
+
+    /* Return pointer to the vector of correlated normal random variables */
+    return corr_rans;
 }
 
-double one_month_portfolio_return(struct risky_asset asset1,
-        struct risky_asset asset2, double rand_var1, double rand_var2) {
-    return asset1.port_weight *
-            one_month_asset_return(asset1.mean, asset1.sigma, rand_var1) +
-            asset2.port_weight *
-            one_month_asset_return(asset2.mean, asset2.sigma, rand_var2);
+double one_month_portfolio_return(struct risky_asset assets[],
+        const int NUM_ASSETS, gsl_vector *rans) {
+    double tot_ret = 0.0;
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        struct risky_asset curr = assets[i];
+        tot_ret += curr.port_weight * one_month_asset_return(curr.mean,
+                curr.sigma, gsl_vector_get(rans,i));
+    }
+    return tot_ret;
 }
 
 double one_month_asset_return(double mean, double sigma, double rand_var) {

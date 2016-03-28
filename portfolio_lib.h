@@ -1,6 +1,7 @@
-#ifndef GSL_RNG_H
-#define GSL_RNG_H
+#ifndef GSL_H
+#define GSL_H
 #include <gsl/gsl_rng.h>
+#include <gsl/gsl_matrix.h>
 #endif
 
 #ifndef PORTFOLIO_DEFS_H
@@ -22,14 +23,16 @@ struct risky_asset {
 
 gsl_rng* initialize_rng();
 
-/* Returns a struct containing two correlated, normally distributed random
- * variables given the correlation coeffcient between them*/
-struct corr_norm two_corr_norm_rvars(double corr, gsl_rng *sim_rng);
+/* Returns a pointer to a vector containing correlated, normally distributed 
+ * random variables given the Cholesky decomposition of the assets' 
+ * variance-covariance matrix */
+gsl_vector* corr_norm_rvars(const int NUM_ASSETS, gsl_rng *rng,
+        gsl_matrix *cholesky);
 
 /* Calculates the return of a portfolio for one month given distribution
  * information for two risky assets and two correlated random variables */
-double one_month_portfolio_return(struct risky_asset asset1,
-        struct risky_asset asset2, double rand_var1, double rand_var2);
+double one_month_portfolio_return(struct risky_asset assets[],
+        const int NUM_ASSETS, gsl_vector *rans);
 
 /* Calculates the return of a single risky asset given distribution
  * information for that asset and a random variable for that month */

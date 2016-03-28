@@ -3,6 +3,9 @@
 #include <omp.h>
 #include "portfolio_lib.h"
 
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_linalg.h>
+
 int main(int argc, char **argv) {
 
     /* TODO: Use options with command line arguments and modify makefile to
@@ -14,35 +17,90 @@ int main(int argc, char **argv) {
     
     const int NUM_MONTHS = atoi(argv[1]);
     const int NUM_RUNS = atoi(argv[2]);
+    const int NUM_ASSETS;
 
-    // TODO: for portfolio with N assets, number of lines in file is num_assets
-    int num_assets = 2;
-    struct risky_asset assets[num_assets];
-    double corr = 0.0;
+    gsl_matrix *varcovar;
+
+    FILE *vc_file = fopen("varcovar.csv", "r");
+    if (vc_file) {
+
+        /* Get the number of assets in the portfolio as first line in file */
+        fscanf(vc_file, "%d", &NUM_ASSETS);
+
+        /* Create matrix with size NUM_ASSETS by NUM_ASSETS */
+        varcovar = gsl_matrix_alloc(NUM_ASSETS, NUM_ASSETS);
+
+        /* Read all numbers from file and place into matrix */
+        for (int i = 0; i < NUM_ASSETS; i++) {
+            for (int j = 0; j < NUM_ASSETS; j++) {
+                double curr; 
+                fscanf(vc_file, "%lf,", &curr);
+                gsl_matrix_set(varcovar, i, j, curr);
+            } 
+        }
+    } else {
+        printf("ERROR: no variance-covariance matrix file provided");
+        exit(1);
+    }
+
+    // TODO: Must free varcovar's memory!
+
+    struct risky_asset assets[NUM_ASSETS];
+
     FILE *asset_file = fopen("assets.csv", "r");
     // TODO: Make sure all asset data is filled
     if (asset_file) {
-        for (int i = 0; i < num_assets; i++) {
+        for (int i = 0; i < NUM_ASSETS; i++) {
             fscanf(asset_file, "%lg,%lg,%lg", &assets[i].mean, &assets[i].sigma,
                     &assets[i].port_weight);
         }
-        fscanf(asset_file, "%lg", &corr);
     } else {
-        printf("ERROR: no asset file provided");
+        printf("ERROR: no asset file provided\n");
         exit(1);
     }
 
     double total_weight = 0;
-    for (int i = 0; i < num_assets; i++) {
+    for (int i = 0; i < NUM_ASSETS; i++) {
         total_weight += assets[i].port_weight;
     }
     if (total_weight != 1.0) {
-        printf("ERROR: weights of assets do not total 100%%");
+        printf("ERROR: weights of assets do not total 100%%\n");
         exit(1);
     }
 
-    //TODO: Get the number of runs and months from the command line args
-    
+    // For debugging purposes
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        for (int j = 0; j < NUM_ASSETS; j++) {
+            printf("%6.3lg |", gsl_matrix_get(varcovar,i,j));
+        }
+        printf("\n");
+    }
+    // --------------
+
+
+    // TODO: Extra Cholesky matrix is not needed, varcovar ptr can be used
+    /* Find Cholesky decomposition for use in MC simulation */
+    gsl_matrix *cholesky = gsl_matrix_alloc(NUM_ASSETS, NUM_ASSETS);
+    gsl_matrix_memcpy(cholesky, varcovar);
+    gsl_linalg_cholesky_decomp(cholesky);
+
+    /* Make the Cholesky decomposition matrix L lower triangular */
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        for (int j = i+1; j < NUM_ASSETS; j++) {
+            gsl_matrix_set(cholesky,i,j,0.0);
+        }
+    }
+
+    // For debugging purposes
+    printf("\nCholesky Decomp:\n");
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        for (int j = 0; j < NUM_ASSETS; j++) {
+            printf("%6.3lg |", gsl_matrix_get(cholesky,i,j));
+        }
+        printf("\n");
+    }
+    // ------------
+
     /* This file will contain the final porfolio returns for all runs */
     FILE *results_file = fopen("results.txt","w");
 
@@ -62,15 +120,17 @@ int main(int argc, char **argv) {
 
         /* Calculate the monthly portfolio return
          * and add to yearly return accumulator */
+        gsl_vector *rans;
         for (int month = 1; month <= NUM_MONTHS; month++) {
-            struct corr_norm rand_vars = two_corr_norm_rvars(corr, rng);
-            double month_ret = one_month_portfolio_return(assets[0], assets[1],
-                    rand_vars.var1, rand_vars.var2);
+            rans = corr_norm_rvars(NUM_ASSETS, rng, cholesky);
+            double month_ret = one_month_portfolio_return(assets, NUM_ASSETS,
+                    rans);
             total_return += month_ret;
         }
 
         /* Free memory taken by random number generator */
-        free(rng);
+        gsl_rng_free(rng);
+        gsl_vector_free(rans);
 
         if(results_file) {
             #pragma omp critical
@@ -83,6 +143,8 @@ int main(int argc, char **argv) {
         /* printf("Total return: %f%%\n", total_return * 100); */
 
     }
+
+    gsl_matrix_free(cholesky);
 
     exit(0);
 }
