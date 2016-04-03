@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open("results.txt") as results_file:
+with open("data/results.txt") as results_file:
     results_data = results_file.read()
 
 results_data = results_data.split('\n')

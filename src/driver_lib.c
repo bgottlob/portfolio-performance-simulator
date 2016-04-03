@@ -39,7 +39,7 @@ struct risky_asset* assets_from_file(const char *filename,
     struct risky_asset *assets = (struct risky_asset *)malloc(NUM_ASSETS *
             sizeof(struct risky_asset));
 
-    FILE *asset_file = fopen("assets.csv", "r");
+    FILE *asset_file = fopen(filename, "r");
     if (asset_file) {
         for (int i = 0; i < NUM_ASSETS; i++) {
             fscanf(asset_file, "%lg,%lg,%lg", &assets[i].mean, &assets[i].sigma,
