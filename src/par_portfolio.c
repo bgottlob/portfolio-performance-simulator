@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     gsl_matrix *cholesky = varcovar;
 
     /* This file will contain the final porfolio returns for all runs */
-    FILE *results_file = fopen("../data/results.txt","w");
+    FILE *results_file = fopen("data/results.txt","w");
     if(results_file) {
         /* Each run of this loop is one simulation of portfolio return */
         #pragma omp parallel for
@@ -47,8 +47,10 @@ int main(int argc, char **argv) {
             {
                 fprintf(results_file, "%f\n", total_return);
             }
-            /* printf("Total return: %f%%\n", total_return * 100); */
+            //printf("Total return: %f%%\n", total_return * 100);
         }
+    } else {
+        printf("NO RESULTS FILE\n");
     }
     gsl_matrix_free(cholesky);
     exit(0);

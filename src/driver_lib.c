@@ -29,6 +29,7 @@ gsl_matrix* varcovar_from_file(const char *filename, const int *NUM_ASSETS) {
         printf("ERROR: no variance-covariance matrix file provided\n");
         exit(1);
     }
+    fclose(vc_file);
 
     return varcovar;
 }
@@ -49,6 +50,7 @@ struct risky_asset* assets_from_file(const char *filename,
         printf("ERROR: valid asset file not provided\n");
         exit(1);
     }
+    fclose(asset_file);
 
     double total_weight = 0;
     for (int i = 0; i < NUM_ASSETS; i++) {

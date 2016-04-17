@@ -76,9 +76,7 @@ double one_month_portfolio_return(struct risky_asset assets[],
 }
 
 double one_month_asset_return(double mean, double sigma, double rand_var) {
-    /* 1/12 is the change in time for monthly returns;
-     * static because it only needs to be calculated once for all
-     * runs of this function */
-    static double delta_t = 1.0/12.0;
+    /* 1/12 is the change in time for monthly returns */
+    double delta_t = 1.0/12.0;
     return mean * delta_t + sigma * sqrt(delta_t) * rand_var;
 }
