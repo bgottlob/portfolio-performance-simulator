@@ -5,6 +5,8 @@
 #include "driver_lib.h"
 
 #include <gsl/gsl_matrix.h>
+#include <string.h>
+#include <gsl/gsl_statistics_double.h>
 
 int main(int argc, char **argv) {
 
@@ -15,15 +17,42 @@ int main(int argc, char **argv) {
     
     const int NUM_MONTHS = atoi(argv[1]);
     const int NUM_RUNS = atoi(argv[2]);
-    const int NUM_ASSETS;
+    size_t NUM_ASSETS = 0;
 
-    gsl_matrix *varcovar = varcovar_from_file("data/varcovar.csv", &NUM_ASSETS);
-    struct risky_asset *assets = assets_from_file("data/assets.csv", NUM_ASSETS);
+    char **ticks = read_ticker_file("data/tickers.csv", &NUM_ASSETS);
+
+    ret_data *dataset = malloc(NUM_ASSETS * sizeof(ret_data));
+    risky_asset *assets = malloc(NUM_ASSETS *sizeof(risky_asset));
+
+    time_t t = time(NULL);
+    struct tm curr_time = *localtime(&t);
+
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        dataset[i].data = read_price_file(
+                get_stock_file(ticks[i], curr_time, 6), &dataset[i].size);
+        assets[i].ticker = malloc((strlen(ticks[i]) + 1) * sizeof(char));
+
+        /* Actually copy the string instead of setting pointers equal so that 
+         * the ticks array can be freed */
+        strcpy(assets[i].ticker, ticks[i]);
+        assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size);
+        assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size);
+
+        /* For now, set all stock weights to be equal */
+        assets[i].port_weight = 1.0/NUM_ASSETS;
+    }
+    free(ticks);
+
+    gsl_matrix *varcovar = calculate_varcovar(dataset, NUM_ASSETS);
+    free(dataset);
     perform_cholesky(varcovar, NUM_ASSETS);
     gsl_matrix *cholesky = varcovar;
 
+
+    printf("Finished crunching numbers and getting data for stock returns\nBeginning simulations\n");
+
     /* This file will contain the final porfolio returns for all runs */
-    FILE *results_file = fopen("../data/results.txt","w");
+    FILE *results_file = fopen("data/results.txt","w");
     if(results_file) {
         /* Each run of this loop is one simulation of portfolio return */
         #pragma omp parallel for
@@ -47,8 +76,10 @@ int main(int argc, char **argv) {
             {
                 fprintf(results_file, "%f\n", total_return);
             }
-            /* printf("Total return: %f%%\n", total_return * 100); */
+            //printf("Total return: %f%%\n", total_return * 100);
         }
+    } else {
+        printf("NO RESULTS FILE\n");
     }
     gsl_matrix_free(cholesky);
     exit(0);

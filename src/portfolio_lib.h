@@ -15,11 +15,12 @@ struct corr_norm {
 
 /* Stores information on the annual distribution of returns of a single risky
  * asset along with its weight within the portfolio */
-struct risky_asset {
+struct {
+    char *ticker;
     double mean;
     double sigma;
     double port_weight;
-};
+} typedef risky_asset;
 
 gsl_rng* initialize_rng();
 
@@ -31,7 +32,7 @@ gsl_vector* corr_norm_rvars(const int NUM_ASSETS, gsl_rng *rng,
 
 /* Calculates the return of a portfolio for one month given distribution
  * information for two risky assets and two correlated random variables */
-double one_month_portfolio_return(struct risky_asset assets[],
+double one_month_portfolio_return(risky_asset assets[],
         const int NUM_ASSETS, gsl_vector *rans);
 
 /* Calculates the return of a single risky asset given distribution

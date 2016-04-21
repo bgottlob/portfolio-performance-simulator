@@ -15,8 +15,8 @@ par_portfolio.o : src/par_portfolio.c
 
 # Links the libraries with both serial and parallel implementations to create executable files
 compile : par_portfolio.o ser_portfolio.o portfolio_lib.o driver_lib.o
-	gcc portfolio_lib.o driver_lib.o ser_portfolio.o -g -lgsl -lgslcblas -lm -o ser_portfolio.out
-	gcc portfolio_lib.o driver_lib.o par_portfolio.o -g -fopenmp -lgsl -lgslcblas -lm -o par_portfolio.out
+	gcc portfolio_lib.o driver_lib.o ser_portfolio.o -g -lcurl -lgsl -lgslcblas -lm -o ser_portfolio.out
+	gcc portfolio_lib.o driver_lib.o par_portfolio.o -g -lcurl -fopenmp -lgsl -lgslcblas -lm -o par_portfolio.out
 	
 clean :
 	rm -r *.o *.out *.dSYM
