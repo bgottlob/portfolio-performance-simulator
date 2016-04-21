@@ -64,11 +64,11 @@ gsl_vector* corr_norm_rvars(const int NUM_ASSETS, gsl_rng *rng,
     return corr_rans;
 }
 
-double one_month_portfolio_return(struct risky_asset assets[],
+double one_month_portfolio_return(risky_asset assets[],
         const int NUM_ASSETS, gsl_vector *rans) {
     double tot_ret = 0.0;
     for (int i = 0; i < NUM_ASSETS; i++) {
-        struct risky_asset curr = assets[i];
+        risky_asset curr = assets[i];
         tot_ret += curr.port_weight * one_month_asset_return(curr.mean,
                 curr.sigma, gsl_vector_get(rans,i));
     }
