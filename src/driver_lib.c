@@ -34,10 +34,10 @@ char *get_stock_file(char *ticker, struct tm start_time, int num_years) {
 
     /* Create the file name string, simply the stock ticker with an extension */
     char ext[] = "csv";
-    char subdir[] = "data";
+    char subdir[] = "data/prices";
 
     /* Add 3 for the '/' '.' and null character */
-    char *filename = malloc((strlen(tick_upr) + strlen(ext) + 3) * sizeof(char));
+    char *filename = malloc((strlen(subdir) + strlen(tick_upr) + strlen(ext) + 3) * sizeof(char));
     sprintf(filename, "%s/%s.%s", subdir, tick_upr, ext);
     FILE *file = fopen(filename, "w");
 
