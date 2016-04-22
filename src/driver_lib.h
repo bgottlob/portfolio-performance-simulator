@@ -24,6 +24,8 @@ char **read_ticker_file(char *filename, const size_t *NUM_STOCKS);
 
 gsl_matrix *calculate_varcovar(ret_data *dataset, size_t NUM_STOCKS);
 
+double *read_weight_file(char *filename, const size_t NUM_STOCKS);
+
 
 /* Initialize a variance covariance matrix based on the contents of a file
  * Allocates memory for the matrix - make sure to free the memory at the
