@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
     size_t NUM_ASSETS = 0;
 
     char **ticks = read_ticker_file("data/tickers.csv", &NUM_ASSETS);
+    double *weights = read_weight_file("data/weights.csv", NUM_ASSETS);
 
     ret_data *dataset = malloc(NUM_ASSETS * sizeof(ret_data));
     risky_asset *assets = malloc(NUM_ASSETS *sizeof(risky_asset));
@@ -38,10 +39,13 @@ int main(int argc, char **argv) {
         assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size);
         assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size);
 
-        /* For now, set all stock weights to be equal */
-        assets[i].port_weight = 1.0/NUM_ASSETS;
+        /* For now, set all stock weights to be equal
+        assets[i].port_weight = 1.0/NUM_ASSETS;*/
+
+        assets[i].port_weight = weights[i];
     }
     free(ticks);
+    free(weights);
 
     gsl_matrix *varcovar = calculate_varcovar(dataset, NUM_ASSETS);
     free(dataset);

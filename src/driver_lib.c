@@ -52,6 +52,7 @@ char *get_stock_file(char *ticker, struct tm start_time, int num_years) {
     return filename;
 }
 
+
 /* Sets double array with the monthly returns for the stock whose
  * data is contained in the given file */
 double *read_price_file(char *filename, size_t *data_size) {
@@ -134,6 +135,27 @@ char **read_ticker_file(char *filename, const size_t *NUM_STOCKS) {
 
     
     return tickers;
+}
+
+double *read_weight_file(char *filename, const size_t NUM_STOCKS) {
+    FILE *file = fopen(filename, "r");
+    double *weights = malloc(NUM_STOCKS * sizeof(double));
+    if (file) {
+        int scanned = 0;
+        double sum = 0;
+        for (int i = 0; i < NUM_STOCKS && scanned != EOF; i++)
+            scanned = fscanf(file, "%lg", &weights[i]);
+        for (int i = 0; i < NUM_STOCKS; i++)
+            sum += weights[i];
+        if (sum != 1) {
+            printf("ERROR: Weights do not add up to 100%\n");
+            exit(1);
+        }
+    } else {
+        printf("ERROR: Weights file could not be opened\n");
+        exit(1);
+    }
+    return weights;
 }
 
 gsl_matrix *calculate_varcovar(ret_data *dataset, size_t NUM_STOCKS) {
