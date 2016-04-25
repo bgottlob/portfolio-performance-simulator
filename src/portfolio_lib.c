@@ -4,18 +4,20 @@
 #include <time.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_blas.h>
-
-#ifndef GSL_H
-#define GSL_H
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_matrix.h>
-#endif
+#include <gsl/gsl_linalg.h>
+#include <limits.h>
 
 /* Creates an RNG that can be used by monte carlo simulations. The clock is 
  * used as a seed for an RNG that generates a seed for the RNG whose pointer
  * is returned. The memory pointed to by the returned pointer must be freed */
 gsl_rng* initialize_rng() {
 
+    gsl_rng *res_rng = gsl_rng_alloc(gsl_rng_ranlxs2);
+
+    /* -----------------------Original Approach-------------------
+     * Seeds an initial RNG based on the clock and uses that seed to seed
+     * the generator used in the actual MC simulation. Could suffer from
+     * the "birthday problem" */
     /* MT19937 Generator passed DIEHARD statistical tests and is about
      * as fast as most other generators available in gsl, won't take very
      * long to generate a good randomized seed for the simulation */
@@ -37,10 +39,33 @@ gsl_rng* initialize_rng() {
 
     /* Create the RNG that will be used to generate random variables for the
      * actual monte carlo simulation */
-    gsl_rng *res_rng = gsl_rng_alloc(gsl_rng_ranlxs2);
+
+    gsl_rng_alloc(gsl_rng_ranlxs2);
     gsl_rng_set(res_rng, seed);
 
     return res_rng;
+}
+
+gsl_rng* initialize_rng_with_seed(unsigned long seed) {
+     /* --------------------New Approach---------------------------
+     * Seed the MC simulation RNG by incrementing a static variable. Ensures
+     * That seed will be unique for as many simulations as the maximum size
+     * of an unsigned long. Potential bottleneck to parallel performance */
+
+    gsl_rng *rng = gsl_rng_alloc(gsl_rng_ranlxs2);
+    gsl_rng_set(rng, seed);
+    return rng;
+}
+
+
+void perform_cholesky(gsl_matrix *matrix, const int NUM_ASSETS) {
+    gsl_linalg_cholesky_decomp(matrix);
+    /* Make the Cholesky decomposition matrix L lower triangular */
+    for (int i = 0; i < NUM_ASSETS; i++) {
+        for (int j = i+1; j < NUM_ASSETS; j++) {
+            gsl_matrix_set(matrix,i,j,0.0);
+        }
+    }
 }
 
 gsl_vector* corr_norm_rvars(const int NUM_ASSETS, gsl_rng *rng,

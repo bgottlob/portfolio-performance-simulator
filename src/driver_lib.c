@@ -11,74 +11,93 @@
 #include <gsl/gsl_matrix.h>
 #endif
 
-/* Must make sure that upr buffer is the same size as the src buffer */
 char *str_upr(char *upr, char *src) {
-    for (int i = 0; src[i]; i++) {
+    /* Iterate through the source string until null character is reached */
+    int final = 0;
+    for (int i = 0; i < strlen(src); i++) {
         upr[i] = toupper(src[i]);
+        final = i;
     }
+    /* Terminate upr with the null character */
+    upr[final + 1] = 0;
     return upr;
 }
 
-/* Don't forget to free the memory taken by the filename */
-char *get_stock_file(char *ticker, struct tm start_time, int num_years) {
+char *get_stock_file(char *ticker, struct tm end_date, int num_years) {
 
     char *tick_upr = malloc((strlen(ticker) + 1) * sizeof(char));
+    /* Yahoo Finance URL uses upper case ticker as a parameter */
     str_upr(tick_upr, ticker);
 
-    /* Build URL string for yahoo finance - URL usually contains ~ 100 chars */
-    char url[200];
-    sprintf(url, "http://real-chart.finance.yahoo.com/table.csv?s=%s&a=%02d&b=%02d&c=%04d&d=%02d&e=%02d&f=%04d&g=m&ignore=.csv",
-            tick_upr, start_time.tm_mon, start_time.tm_mday,
-            start_time.tm_year + 1900 - num_years, start_time.tm_mon,
-            start_time.tm_mday, start_time.tm_year + 1900);
+    /* Build URL string for yahoo finance - URL usually contains ~ 100 chars,
+     * so a 200 char buffer will suffice */
+    size_t url_chars = 200;
+    char url[url_chars];
+    snprintf(url, url_chars, "http://real-chart.finance.yahoo.com/table.csv?"
+            "s=%s&a=%02d&b=%02d&c=%04d&d=%02d&e=%02d&f=%04d&g=m&ignore=.csv",
+            tick_upr, end_date.tm_mon, end_date.tm_mday,
+            end_date.tm_year + 1900 - num_years, end_date.tm_mon,
+            end_date.tm_mday, end_date.tm_year + 1900);
 
     /* Create the file name string, simply the stock ticker with an extension */
-    char ext[] = "csv";
-    char subdir[] = "data/prices";
+    char *ext = "csv";
+    char *subdir = "data/prices";
 
-    /* Add 3 for the '/' '.' and null character */
-    char *filename = malloc((strlen(subdir) + strlen(tick_upr) + strlen(ext) + 3) * sizeof(char));
-    sprintf(filename, "%s/%s.%s", subdir, tick_upr, ext);
+    /* Allocate memory for the name to save the file under, create the filename
+     * string, and open it for writing.
+     * Add 3 extra characters for the '/', '.' and null characters */
+    size_t num_chars = strlen(subdir) + strlen(tick_upr) + strlen(ext) + 3;
+    char *filename = malloc(num_chars * sizeof(char));
+    snprintf(filename, num_chars, "%s/%s.%s", subdir, tick_upr, ext);
     FILE *file = fopen(filename, "w");
 
+    /* libcurl Calls */
+
+    /* Initialize libcurl library objects */
     curl_global_init(CURL_GLOBAL_ALL);
     CURL *handle = curl_easy_init();
+    /* Set the URL to request and file to be written to */
     curl_easy_setopt(handle, CURLOPT_URL, url);
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, file);
+    /* Perform curl action - request file from URL and save the file */
     CURLcode res = curl_easy_perform(handle);
+    if (res != CURLE_OK)
+        printf("LIBCURL ERROR: %s\n", curl_easy_strerror(res));
+    /* Free resources taken up by libcurl library objects */
     curl_global_cleanup();
+
     fclose(file);
 
     return filename;
 }
 
-
-/* Sets double array with the monthly returns for the stock whose
- * data is contained in the given file */
 double *read_price_file(char *filename, size_t *data_size) {
 
     FILE *data_file = fopen(filename, "r");
 
-    /* Monthly data for the past five years for each stock will most likely
-     * be the number of data points used in each stock return CSV file */
+    /* Monthly data for the past five years (~60 months) for each stock will
+     * most likely be the number of data points used in each stock
+     * price CSV file from Yahoo */
     size_t ret_cap = 65;
     size_t num_rets = 0;
     double *ret_data = malloc(ret_cap * sizeof(double));
 
     if (data_file) {
+        /* Initialize to negative values to be able to tell whether the first
+         * price has been read */
         double prev_price = -1, curr_price = -1;
 
-        /* Throw away the first line of input */
+        /* Throw away the first line of input
+         * It just contains header labels */
         int scanned = fscanf(data_file, "%*s");
         
         while (scanned != EOF) {
-            /* Make sure that array is large enough to store next return
+            /* Make sure that array is large enough to store the next
              * data point */
             if (num_rets >= ret_cap) {
-                /* Double the size of the array */
+                /* Double the size of the array more space is needed */
                 ret_cap *= 2;
-                double *tmp = realloc(ret_data, (ret_cap + 1) * sizeof(double));
-                /*+1 ensures that if ret_cap is 0, some data will be allocated*/
+                double *tmp = realloc(ret_data, ret_cap * sizeof(double));
                 if (!tmp) {
                     printf("ERROR: Array could not be expanded\n");
                     exit(1);
@@ -86,17 +105,20 @@ double *read_price_file(char *filename, size_t *data_size) {
                 ret_data = tmp;
             }
 
-
             /* If this is the first line to be read, 
              * there is no current price, so read in first price */
             if (curr_price < 0) {
-                scanned = fscanf(data_file, "%*[^,],%*g,%*g,%*g,%*g,%*d,%lg", &curr_price);
+                scanned = fscanf(data_file,
+                        "%*[^,],%*g,%*g,%*g,%*g,%*d,%lg", &curr_price);
             } else {
-                scanned = fscanf(data_file, "%*[^,],%*lg,%*lg,%*lg,%*lg,%*d,%lg", &prev_price);
-                /* Formula for return = ln(priceCurr/pricePrev) */
+                scanned = fscanf(data_file,
+                        "%*[^,],%*lg,%*lg,%*lg,%*lg,%*d,%lg", &prev_price);
                 if (scanned != EOF) {
+                    /* Formula for monthly return =
+                     * ln(this month's price/last month's price) */
                     ret_data[num_rets] = log(curr_price / prev_price);
                     num_rets++;
+
                     /* Parallelism inhibitor: loop-carried dependency */
                     curr_price = prev_price;
                 }
@@ -107,23 +129,35 @@ double *read_price_file(char *filename, size_t *data_size) {
         exit(1);
     }
 
+    /* Set the value for the size of the data to be accessible by the caller */
     *data_size = num_rets;
     return ret_data;
 }
 
-/* Returns an array of strings containing the stock tickers for each stock */
 char **read_ticker_file(char *filename, const size_t *NUM_STOCKS) {
     FILE *ticker_file = fopen(filename, "r");
     char **tickers;
-    size_t MAX_TICK_SIZE = 5;
+    
+    /* Assuming the maximum size for a stock ticker is 6 characters.
+     * Adjust this if need be. Keeping it low ensures that not too much
+     * memory is wasted. */
+    const size_t MAX_TICK_SIZE = 6;
     if (ticker_file) {
+        /* Each line only contains one ticker in the tickers file */
         char line[MAX_TICK_SIZE + 1];
+
+        /* Get the first line, which is just the number of stocks to be read */
         fgets(line, sizeof line, ticker_file);
         int scanned = sscanf(line, "%d", NUM_STOCKS);
+
         tickers = malloc(*NUM_STOCKS * sizeof(char *));
+        /* Read the tickers and populate the tickers array */
         for (int i = 0; i < *NUM_STOCKS && scanned != EOF; i++) {
-            char *temp = malloc((MAX_TICK_SIZE + 1) * sizeof(char));
+            /* Get the whole line - safe way to prevent buffer overflow */
             fgets(line, sizeof line, ticker_file);
+            /* Allocate memory to the current ticker string based on the size
+             * of the line, then add it to the array */
+            char *temp = malloc((strlen(line) + 1) * sizeof(char));
             scanned = sscanf(line, "%5s", temp);
             tickers[i] = temp;
         }
@@ -132,7 +166,6 @@ char **read_ticker_file(char *filename, const size_t *NUM_STOCKS) {
         exit(1);
     }
     fclose(ticker_file);
-
     
     return tickers;
 }
@@ -143,8 +176,10 @@ double *read_weight_file(char *filename, const size_t NUM_STOCKS) {
     if (file) {
         int scanned = 0;
         double sum = 0;
+        /* Get the current weight and add to array */
         for (int i = 0; i < NUM_STOCKS && scanned != EOF; i++)
             scanned = fscanf(file, "%lg", &weights[i]);
+        /* Total up all weights in the array and check if it is equal to 100% */
         for (int i = 0; i < NUM_STOCKS; i++)
             sum += weights[i];
         if (sum != 1) {
@@ -183,9 +218,7 @@ gsl_matrix *calculate_varcovar(ret_data *dataset, size_t NUM_STOCKS) {
                     gsl_matrix_get(varcovar, j, i));
         }
     }
-
     return varcovar;
-
 }
 
 gsl_matrix* varcovar_from_file(const char *filename, const int *NUM_ASSETS) {
@@ -212,7 +245,6 @@ gsl_matrix* varcovar_from_file(const char *filename, const int *NUM_ASSETS) {
         exit(1);
     }
     fclose(vc_file);
-
     return varcovar;
 }
 
@@ -234,6 +266,7 @@ risky_asset* assets_from_file(const char *filename,
     }
     fclose(asset_file);
 
+    /* Ensure the weight of the whole portfolio is equal to 100% */
     double total_weight = 0;
     for (int i = 0; i < NUM_ASSETS; i++) {
         total_weight += assets[i].port_weight;
@@ -246,15 +279,4 @@ risky_asset* assets_from_file(const char *filename,
     return assets;
 }
 
-void perform_cholesky(gsl_matrix *matrix, const int NUM_ASSETS) {
 
-    gsl_linalg_cholesky_decomp(matrix);
-
-    /* Make the Cholesky decomposition matrix L lower triangular */
-    for (int i = 0; i < NUM_ASSETS; i++) {
-        for (int j = i+1; j < NUM_ASSETS; j++) {
-            gsl_matrix_set(matrix,i,j,0.0);
-        }
-    }
-
-}
