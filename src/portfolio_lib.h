@@ -1,28 +1,23 @@
-#ifndef GSL_H
-#define GSL_H
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_matrix.h>
-#endif
 
-#ifndef PORTFOLIO_DEFS_H
-#define PORTFOLIO_DEFS_H
-
-/* Stores a pair of correlated random normal variables */
-struct corr_norm {
-    double var1;
-    double var2;
-};
-
-/* Stores information on the annual distribution of returns of a single risky
- * asset along with its weight within the portfolio */
+#ifndef PORTFOLIO_LIB_H
+#define PORTFOLIO_LIB_H
+/* Stores statistics information on the annual distribution of returns 
+ * of a single risky asset along with its ticker and
+ * weight within the portfolio */
 struct {
     char *ticker;
     double mean;
-    double sigma;
+    double sigma; /* The standard deviation of returns */
     double port_weight;
 } typedef risky_asset;
 
 gsl_rng* initialize_rng();
+
+gsl_rng* initialize_rng_with_seed(unsigned long seed);
+
+void perform_cholesky(gsl_matrix *matrix, const int NUM_ASSETS);
 
 /* Returns a pointer to a vector containing correlated, normally distributed 
  * random variables given the Cholesky decomposition of the assets' 
@@ -38,5 +33,4 @@ double one_month_portfolio_return(risky_asset assets[],
 /* Calculates the return of a single risky asset given distribution
  * information for that asset and a random variable for that month */
 double one_month_asset_return(double mean, double sigma, double rand_var);
-
 #endif
