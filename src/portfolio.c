@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <limits.h>
+#include <sys/time.h>
 
 #include "portfolio_lib.h"
 
@@ -55,7 +56,12 @@ int main(int argc, char **argv) {
 
     time_t t = time(NULL);
     struct tm curr_time = *localtime(&t);
+    
+    struct timeval retrieval_begin, retrieval_end, sim_begin, sim_end;
+    double retrieval_time, sim_time;
+    gettimeofday(&retrieval_begin, NULL);
 
+    int get_from_yahoo = 0;
     #pragma omp parallel for num_threads(NUM_ASSETS)
     for (int i = 0; i < NUM_ASSETS; i++) {
 
@@ -65,19 +71,19 @@ int main(int argc, char **argv) {
         #endif
         */
 
-        char *price_filename = get_stock_file(ticks[i], curr_time, 6);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
+        /*char *price_filename = get_stock_file(ticks[i], curr_time, 6);
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
 
-        /* TODO: Skip donwload of data to use
+        /* TODO: Skip download of data to use
          * data that has already been retrieved */
-        /*char *price_subdir = "data/prices";
+        char *price_subdir = "data/prices";
         char *price_extension = "csv";
         size_t price_fname_chars = strlen(ticks[i]) + strlen(price_subdir) +
                         strlen(price_extension) + 3;
         char price_filename[price_fname_chars];
         snprintf(price_filename, price_fname_chars, "%s/%s.%s",
                 price_subdir, ticks[i], price_extension);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
 
 
         assets[i].ticker = malloc((strlen(ticks[i]) + 1) * sizeof(char));
@@ -85,14 +91,18 @@ int main(int argc, char **argv) {
         /* Actually copy the string instead of setting pointers equal so that 
          * the ticks array can be freed */
         strcpy(assets[i].ticker, ticks[i]);
-        assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size);
-        assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size);
+        assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size) * 12;
+        assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size) * 12;
 
         /* For now, set all stock weights to be equal
         assets[i].port_weight = 1.0/NUM_ASSETS;*/
 
         assets[i].port_weight = weights[i];
+
+        //printf("%s\nmu: %lg\nsig: %lg\n", assets[i].ticker, assets[i].mean, assets[i].sigma);
     }
+    gettimeofday(&retrieval_end, NULL);
+    retrieval_time = retrieval_end.tv_usec - retrieval_begin.tv_usec;
 
     for (int i = 0; i < NUM_ASSETS; i++)
         free(ticks[i]);
@@ -103,7 +113,7 @@ int main(int argc, char **argv) {
     free(dataset);
     perform_cholesky(varcovar, NUM_ASSETS);
     gsl_matrix *cholesky = varcovar;
-
+    
     printf("Finished crunching numbers and getting data for stock returns\n"
             "Beginning simulations\n");
 
@@ -111,6 +121,13 @@ int main(int argc, char **argv) {
     FILE *results_file = fopen("data/results.txt","w");
     /* The results that will be displayed on histogram */
     double total_rets[NUM_RUNS];
+    gettimeofday(&sim_begin, NULL);
+    time_t start = time(NULL), end;
+    unsigned long init_seed = seed;
+    int num_sim_threads = 1;
+    #if defined(_OPENMP)
+        num_sim_threads = omp_get_max_threads();
+    #endif
     if(results_file) {
         /* Each run of this loop is one simulation of portfolio return */
         #pragma omp parallel for
@@ -144,17 +161,41 @@ int main(int argc, char **argv) {
 
             total_rets[run] = total_return;
 
-            #pragma omp critical
-            {
-                fprintf(results_file, "%lg\n", total_return * 100);
-            }
             //printf("Total return: %f%%\n", total_return * 100);
         }
+        gettimeofday(&sim_end, NULL);
+
+        retrieval_time = retrieval_end.tv_sec - retrieval_begin.tv_sec;
+        retrieval_time += ((double)(retrieval_end.tv_usec - retrieval_begin.tv_usec)) / 1000000.0;
+
+        sim_time = sim_end.tv_sec - sim_begin.tv_sec;
+        sim_time += ((double)(sim_end.tv_usec - sim_begin.tv_usec)) / 1000000.0;
+        printf("Ret time: %lg\nSim time: %lg\n", retrieval_time, sim_time);
+
+        for (int i = 0; i < NUM_RUNS; i++) {
+            fprintf(results_file, "%lg\n", total_rets[i] * 100);
+        }
+        fclose(results_file);
+
+        double res_mean = gsl_stats_mean(total_rets,1,NUM_RUNS) * 100;
+        double res_std = gsl_stats_sd(total_rets,1,NUM_RUNS)* 100;
 
         printf("Mean of annual returns: %lg%%\n"
                 "Standard dev of annual returns: %lg%%\n",
-                gsl_stats_mean(total_rets,1,NUM_RUNS) * 100,
-                gsl_stats_sd(total_rets,1,NUM_RUNS)* 100 );
+                res_mean, res_std);
+
+        printf("seed: %lu", init_seed);
+        FILE *test_file = fopen("data/test_res_divers.csv", "a");
+        if (test_file) {
+           fprintf(test_file, "%d,%d,%d,%d,%d,%lg,%lg,%s,%lg,%lg,%lu\n", 
+                   NUM_ASSETS, NUM_RUNS, NUM_MONTHS, num_sim_threads,
+                   get_from_yahoo, retrieval_time, sim_time, PORT_SUFF,
+                   res_mean, res_std, init_seed);
+        } else {
+            printf("ERROR: File for test results could not be opened\n");
+            exit(1);
+        }
+        fclose(test_file);
     } else {
         printf("NO RESULTS FILE\n");
     }

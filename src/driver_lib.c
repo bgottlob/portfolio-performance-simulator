@@ -78,7 +78,7 @@ double *read_price_file(char *filename, size_t *data_size) {
     /* Monthly data for the past five years (~60 months) for each stock will
      * most likely be the number of data points used in each stock
      * price CSV file from Yahoo */
-    size_t ret_cap = 65;
+    size_t ret_cap = 72;
     size_t num_rets = 0;
     double *ret_data = malloc(ret_cap * sizeof(double));
 
@@ -182,10 +182,11 @@ double *read_weight_file(char *filename, const size_t NUM_STOCKS) {
         /* Total up all weights in the array and check if it is equal to 100% */
         for (int i = 0; i < NUM_STOCKS; i++)
             sum += weights[i];
-        if (sum != 1) {
+        printf("Weights sum %lg\n", sum);
+        /*if (sum != 1.0) {
             printf("ERROR: Weights do not add up to 100%\n");
             exit(1);
-        }
+        }*/
     } else {
         printf("ERROR: Weights file could not be opened\n");
         exit(1);
@@ -205,9 +206,9 @@ gsl_matrix *calculate_varcovar(ret_data *dataset, size_t NUM_STOCKS) {
             /* Assumes that datasets will have the same size - a reasonable
              * assumption since all stocks will have return data going back
              * to and from the same points in time */
-            gsl_matrix_set(varcovar, i, j,
-                gsl_stats_covariance(dataset[i].data, 1,
-                    dataset[j].data, 1, dataset[i].size));
+            double covar = gsl_stats_covariance(dataset[i].data, 1,
+                    dataset[j].data, 1, dataset[i].size);
+            gsl_matrix_set(varcovar, i, j, covar);
         }
     }
 
