@@ -184,7 +184,7 @@ double *read_weight_file(char *filename, const size_t NUM_STOCKS) {
         /* Total up all weights in the array and check if it is equal to 100% */
         for (int i = 0; i < NUM_STOCKS; i++)
             sum += weights[i];
-        printf("Weights sum %lg\n", sum);
+        //printf("Weights sum %lg\n", sum);
         /*if (sum != 1.0) {
             printf("ERROR: Weights do not add up to 100%\n");
             exit(1);

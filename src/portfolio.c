@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
         assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size) * 12;
         assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size) * 12;
         //printf("%s's mean: %lg and std: %lg\n", assets[i].ticker,
-                assets[i].mean, assets[i].sigma);
+                //assets[i].mean, assets[i].sigma);
 
         /* For now, set all stock weights to be equal
         assets[i].port_weight = 1.0/NUM_ASSETS;*/
