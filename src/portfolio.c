@@ -93,6 +93,8 @@ int main(int argc, char **argv) {
         strcpy(assets[i].ticker, ticks[i]);
         assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size) * 12;
         assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size) * 12;
+        printf("%s's mean: %lg and std: %lg\n", assets[i].ticker,
+                assets[i].mean, assets[i].sigma);
 
         /* For now, set all stock weights to be equal
         assets[i].port_weight = 1.0/NUM_ASSETS;*/
@@ -184,13 +186,13 @@ int main(int argc, char **argv) {
                 "Standard dev of annual returns: %lg%%\n",
                 res_mean, res_std);
 
-        printf("seed: %lu", init_seed);
-        FILE *test_file = fopen("data/test_res_divers.csv", "a");
+        //printf("seed: %lu", init_seed);
+        FILE *test_file = fopen("data/test_res_acc.csv", "a");
         if (test_file) {
-           fprintf(test_file, "%d,%d,%d,%d,%d,%lg,%lg,%s,%lg,%lg,%lu\n", 
+           fprintf(test_file, "%d,%d,%d,%d,%d,%lg,%lg,%s,%lg,%lg,%lu,%d\n", 
                    NUM_ASSETS, NUM_RUNS, NUM_MONTHS, num_sim_threads,
                    get_from_yahoo, retrieval_time, sim_time, PORT_SUFF,
-                   res_mean, res_std, init_seed);
+                   res_mean, res_std, init_seed, 2);
         } else {
             printf("ERROR: File for test results could not be opened\n");
             exit(1);

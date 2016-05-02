@@ -39,6 +39,8 @@ char *get_stock_file(char *ticker, struct tm end_date, int num_years) {
             end_date.tm_year + 1900 - num_years, end_date.tm_mon,
             end_date.tm_mday, end_date.tm_year + 1900);
 
+    printf("url: %s\n", url);
+
     /* Create the file name string, simply the stock ticker with an extension */
     char *ext = "csv";
     char *subdir = "data/prices";
