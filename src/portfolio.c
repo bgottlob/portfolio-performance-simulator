@@ -71,19 +71,19 @@ int main(int argc, char **argv) {
         #endif
         */
 
-        /*char *price_filename = get_stock_file(ticks[i], curr_time, 6);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
+        char *price_filename = get_stock_file(ticks[i], curr_time, 6);
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
 
         /* TODO: Skip download of data to use
          * data that has already been retrieved */
-        char *price_subdir = "data/prices";
+        /*char *price_subdir = "data/prices";
         char *price_extension = "csv";
         size_t price_fname_chars = strlen(ticks[i]) + strlen(price_subdir) +
                         strlen(price_extension) + 3;
         char price_filename[price_fname_chars];
         snprintf(price_filename, price_fname_chars, "%s/%s.%s",
                 price_subdir, ticks[i], price_extension);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
 
 
         assets[i].ticker = malloc((strlen(ticks[i]) + 1) * sizeof(char));
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
         strcpy(assets[i].ticker, ticks[i]);
         assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size) * 12;
         assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size) * 12;
-        printf("%s's mean: %lg and std: %lg\n", assets[i].ticker,
+        //printf("%s's mean: %lg and std: %lg\n", assets[i].ticker,
                 assets[i].mean, assets[i].sigma);
 
         /* For now, set all stock weights to be equal
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 
         sim_time = sim_end.tv_sec - sim_begin.tv_sec;
         sim_time += ((double)(sim_end.tv_usec - sim_begin.tv_usec)) / 1000000.0;
-        printf("Ret time: %lg\nSim time: %lg\n", retrieval_time, sim_time);
+        printf("Data retrieval time: %lg\nSimulation time: %lg\n", retrieval_time, sim_time);
 
         for (int i = 0; i < NUM_RUNS; i++) {
             fprintf(results_file, "%lg\n", total_rets[i] * 100);
@@ -187,7 +187,8 @@ int main(int argc, char **argv) {
                 res_mean, res_std);
 
         //printf("seed: %lu", init_seed);
-        FILE *test_file = fopen("data/test_res_acc.csv", "a");
+        //Printing to test file if needed
+        /*FILE *test_file = fopen("data/test_res_acc.csv", "a");
         if (test_file) {
            fprintf(test_file, "%d,%d,%d,%d,%d,%lg,%lg,%s,%lg,%lg,%lu,%d\n", 
                    NUM_ASSETS, NUM_RUNS, NUM_MONTHS, num_sim_threads,
@@ -197,7 +198,7 @@ int main(int argc, char **argv) {
             printf("ERROR: File for test results could not be opened\n");
             exit(1);
         }
-        fclose(test_file);
+        fclose(test_file);*/
     } else {
         printf("NO RESULTS FILE\n");
     }
