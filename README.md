@@ -16,7 +16,7 @@ To run the parallel code, execute this command: `./par_portfolio <num_months> <n
 
 In order to run the parallel code with multiple threads, be sure to set the `OMP_NUM_THREADS` environment variable to the number of threads that you would like to use. If this environment variable is not set, you will not see parallel speedup. To set the number of threads to `4`, use this command `export OMP_NUM_THREADS=4`
 
-To see the histogram of the most recently run set of simulations, execute this command: `python src/plot.py`
+To see the histogram of the most recently run set of simulations, execute this command: `python src/plot.py <chart-title>`
 
 ## Example Test Run
 Once you have compiled, you can run 10000 simulations in parallel for 2 years with the MKT portfolio (details given by the `data/tickersMKT.csv` and `weightsMKT.csv` files) with an initial random number generator seed of 0 using this command `./par_portfolio.out 24 10000 MKT 0`
