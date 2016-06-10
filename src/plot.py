@@ -15,7 +15,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.set_xlabel('Portfolio Return (%)', color=blue_hex)
 ax.set_ylabel('Frequency', color=blue_hex)
-#plt.axis((-15,30,0,1200));
+#plt.axis((2,20,0,1200));
 
 title = "No Title Provided"
 if (len(sys.argv) > 1):
