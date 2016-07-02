@@ -1,5 +1,15 @@
 # Monte Carlo Simulation - Portfolio Performance
 
+## Deps
+- gsl
+- libcurl
+- openmp
+- pyplot
+
+## Snafus
+- Installing ATLAS on Ubuntu
+- BLAS function for multiplying matrix by vector is returning NANs
+
 ## Prerequisites
 Ensure that you have GNU `gcc` installed so you can use OpenMP.
 Ensure that the `gcc` command defaults to 

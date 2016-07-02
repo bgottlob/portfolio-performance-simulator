@@ -78,15 +78,27 @@ gsl_vector* corr_norm_rvars(const int NUM_ASSETS, gsl_rng *rng,
     }
 
     gsl_vector *corr_rans = gsl_vector_alloc(NUM_ASSETS);
+
+    //for (int i = 0; i < NUM_ASSETS; i++) {
+    //    printf("uncorr rand: %lg\n", gsl_vector_get(rans,i));
+    //}
+
+    //for (int i = 0; i < NUM_ASSETS; i++) {
+    //    for (int j = 0; j < NUM_ASSETS; j++)
+    //        printf("%lg | ", gsl_matrix_get(cholesky, i, j));
+    //    printf("\n");
+    //}
     
     /* Multiply by Cholesky decomposition to generate correlated random
      * variables */
-    gsl_blas_dgemv(CblasNoTrans, 1, cholesky, rans, 1, corr_rans);
+    gsl_blas_dtrmv(CblasLower, CblasNoTrans, CblasNonUnit, cholesky, rans);
 
-    gsl_vector_free(rans);
+    //for (int i = 0; i < NUM_ASSETS; i++) {
+    //    printf("corr rand: %lg\n", gsl_vector_get(rans,i));
+    //}
 
     /* Return pointer to the vector of correlated normal random variables */
-    return corr_rans;
+    return rans;
 }
 
 double one_month_portfolio_return(risky_asset assets[],

@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 
     time_t t = time(NULL);
     struct tm curr_time = *localtime(&t);
-    
+
     struct timeval retrieval_begin, retrieval_end, sim_begin, sim_end;
     double retrieval_time, sim_time;
     gettimeofday(&retrieval_begin, NULL);
@@ -71,19 +71,19 @@ int main(int argc, char **argv) {
         #endif
         */
 
-        char *price_filename = get_stock_file(ticks[i], curr_time, 6);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
+        /*char *price_filename = get_stock_file(ticks[i], curr_time, 6);
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
 
         /* TODO: Skip download of data to use
          * data that has already been retrieved */
-        /*char *price_subdir = "data/prices";
+        char *price_subdir = "data/prices";
         char *price_extension = "csv";
         size_t price_fname_chars = strlen(ticks[i]) + strlen(price_subdir) +
                         strlen(price_extension) + 3;
         char price_filename[price_fname_chars];
         snprintf(price_filename, price_fname_chars, "%s/%s.%s",
                 price_subdir, ticks[i], price_extension);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
 
 
         assets[i].ticker = malloc((strlen(ticks[i]) + 1) * sizeof(char));
@@ -115,6 +115,12 @@ int main(int argc, char **argv) {
     free(dataset);
     perform_cholesky(varcovar, NUM_ASSETS);
     gsl_matrix *cholesky = varcovar;
+
+    //for (int i = 0; i < NUM_ASSETS; i++) {
+    //    for (int j = 0; j < NUM_ASSETS; j++)
+    //        printf("%lg | ", gsl_matrix_get(cholesky, i, j));
+    //    printf("\n");
+    //}
     
     printf("Finished crunching numbers and getting data for stock returns\n"
             "Beginning simulations\n");
@@ -154,8 +160,13 @@ int main(int argc, char **argv) {
             gsl_vector *rans;
             for (int month = 1; month <= NUM_MONTHS; month++) {
                 rans = corr_norm_rvars(NUM_ASSETS, rng, cholesky);
+
+                //for (int k = 0; k < NUM_ASSETS; k++)
+                //    printf("A random var:%lg\n", gsl_vector_get(rans,k));
+
                 double month_ret = one_month_portfolio_return(assets,
                         NUM_ASSETS, rans);
+                //printf("mont_ret: %lg\n", month_ret);
                 total_return += month_ret;
             }
             gsl_rng_free(rng);

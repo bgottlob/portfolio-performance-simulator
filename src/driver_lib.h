@@ -72,7 +72,7 @@ double *read_price_file(char *filename, size_t *data_size);
  * responsible for freeing all of that memory taken up both by the individual
  * strings and the array pointer itself.
  */
-char **read_ticker_file(char *filename, const size_t *NUM_STOCKS);
+char **read_ticker_file(char *filename, size_t *NUM_STOCKS);
 
 /* Read a file containing weights of stocks in a portfolio and create an
  * array of those weights
@@ -114,7 +114,7 @@ gsl_matrix *calculate_varcovar(ret_data *dataset, size_t NUM_STOCKS);
  * free this memory. This function will also overwrite the value that NUM_ASSETS
  * points to
  */
-gsl_matrix* varcovar_from_file(const char *filename, const int *NUM_ASSETS);
+gsl_matrix* varcovar_from_file(const char *filename, int *NUM_ASSETS);
 
 /* Create an array of risky_assets from the contents of a file that specifies
  * the statistics of the distributions of those assets

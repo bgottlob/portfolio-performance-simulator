@@ -19,4 +19,4 @@ compile : objs/par_portfolio.o objs/ser_portfolio.o objs/portfolio_lib.o objs/dr
 	gcc objs/portfolio_lib.o objs/driver_lib.o objs/par_portfolio.o -g -lcurl -fopenmp -lgsl -lgslcblas -lm -o par_portfolio.out
 	
 clean :
-	rm -r *.out *.dSYM objs/* data/prices/*
+	rm -r *.out *.dSYM objs/*

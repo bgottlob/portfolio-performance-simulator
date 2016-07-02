@@ -15,14 +15,14 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.set_xlabel('Portfolio Return (%)', color=blue_hex)
 ax.set_ylabel('Frequency', color=blue_hex)
-#plt.axis((2,20,0,1200));
+#plt.axis((2,50,0,1200));
 
 title = "No Title Provided"
 if (len(sys.argv) > 1):
     title = sys.argv[1];
 fig.suptitle(title, fontsize=20, fontweight='bold', color=blue_hex)
 
-y,binEdges,_=plt.hist(results_data, 30, histtype='stepfilled', color=blue_hex);
+y,binEdges,_=plt.hist(results_data, bins=30, histtype='stepfilled', color=blue_hex);
 bincenters = 0.5*(binEdges[1:]+binEdges[:-1]);
 plt.plot(bincenters,y,'-', color='#885E23', linewidth=4);
 

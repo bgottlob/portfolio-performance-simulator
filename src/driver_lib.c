@@ -114,7 +114,7 @@ double *read_price_file(char *filename, size_t *data_size) {
                         "%*[^,],%*g,%*g,%*g,%*g,%*d,%lg", &curr_price);
             } else {
                 scanned = fscanf(data_file,
-                        "%*[^,],%*lg,%*lg,%*lg,%*lg,%*d,%lg", &prev_price);
+                        "%*[^,],%*g,%*g,%*g,%*g,%*d,%lg", &prev_price);
                 if (scanned != EOF) {
                     /* Formula for monthly return =
                      * ln(this month's price/last month's price) */
@@ -136,7 +136,7 @@ double *read_price_file(char *filename, size_t *data_size) {
     return ret_data;
 }
 
-char **read_ticker_file(char *filename, const size_t *NUM_STOCKS) {
+char **read_ticker_file(char *filename, size_t *NUM_STOCKS) {
     FILE *ticker_file = fopen(filename, "r");
     char **tickers;
     
@@ -150,7 +150,7 @@ char **read_ticker_file(char *filename, const size_t *NUM_STOCKS) {
 
         /* Get the first line, which is just the number of stocks to be read */
         fgets(line, sizeof line, ticker_file);
-        int scanned = sscanf(line, "%d", NUM_STOCKS);
+        int scanned = sscanf(line, "%lu", NUM_STOCKS);
 
         tickers = malloc(*NUM_STOCKS * sizeof(char *));
         /* Read the tickers and populate the tickers array */
@@ -224,7 +224,7 @@ gsl_matrix *calculate_varcovar(ret_data *dataset, size_t NUM_STOCKS) {
     return varcovar;
 }
 
-gsl_matrix* varcovar_from_file(const char *filename, const int *NUM_ASSETS) {
+gsl_matrix* varcovar_from_file(const char *filename, int *NUM_ASSETS) {
     gsl_matrix *varcovar;
     FILE *vc_file = fopen(filename, "r");
     if (vc_file) {
