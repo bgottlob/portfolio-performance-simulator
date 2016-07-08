@@ -13,7 +13,7 @@
  * array of double data and the size of that data */
 struct {
     double *data;
-    size_t size; 
+    size_t size;
 } typedef ret_data;
 
 /* Converts a string to upper case.
@@ -122,7 +122,7 @@ gsl_matrix* varcovar_from_file(const char *filename, int *NUM_ASSETS);
  * \param filename is the name of the file to be read
  * \param NUM_ASSETS is the number of assets to be read
  * \return an array of initialized assets
- * 
+ *
  * Notes:
  * The returned array is allocated memory inside this function. It is the
  * caller's responsibility to free this memory

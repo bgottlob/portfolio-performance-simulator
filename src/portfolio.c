@@ -1,39 +1,37 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <omp.h>
 #include <limits.h>
 #include <sys/time.h>
+#include <string.h>
+#include <math.h>
+
+#include <omp.h>
+
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_statistics_double.h>
 
 #include "portfolio_lib.h"
-
 #include "driver_lib.h"
-
-#include <math.h>
-#include <gsl/gsl_matrix.h>
-#include <string.h>
-#include <gsl/gsl_statistics_double.h>
 
 int main(int argc, char **argv) {
 
-    unsigned long *seed_ptr = NULL;
-
-    /* Idea: Inital seed could be randomly generated */
     unsigned long seed = 0;
-
     if (argc < 4 || argc > 5) {
-        printf("ERROR: You have not provided exactly three or"
-                "exactly four arguments\n");
+        printf("ERROR: You have not provided exactly four or"
+                "exactly five arguments\n");
         exit(1);
+    /* Set the seed if it has been provided */
     } else if (argc == 5) {
-        seed = strtoul(argv[4], NULL, 10); 
-        seed_ptr = &seed;
+        seed = strtoul(argv[4], NULL, 10);
     }
-    
+
     const int NUM_MONTHS = atoi(argv[1]);
     const int NUM_RUNS = atoi(argv[2]);
     const char *PORT_SUFF = argv[3];
     size_t NUM_ASSETS = 0;
 
+    /* Build the names of the files containing the assets' tickers and
+     * their weights in the portfolio */
     char *subdir = "data";
     char *tickers_name = "tickers";
     char *weights_name = "weights";
@@ -43,12 +41,16 @@ int main(int argc, char **argv) {
     char weights_filename[strlen(subdir) + strlen(weights_name)
         + strlen(PORT_SUFF) + strlen(extension) + 3];
 
+    /* Takes format: 'data/tickersX.csv' and 'data/weightsX.csv' where X is
+     * the suffix that identifies the specific portfolio */
     snprintf(ticker_filename, sizeof(ticker_filename), "%s/%s%s.%s",
             subdir, tickers_name, PORT_SUFF, extension);
     snprintf(weights_filename, sizeof(weights_filename), "%s/%s%s.%s",
             subdir, weights_name, PORT_SUFF, extension);
 
+    /* Read file into an array of ticker strings */
     char **ticks = read_ticker_file(ticker_filename, &NUM_ASSETS);
+    /* Read file into an array of weight percentages (in decimal form) */
     double *weights = read_weight_file(weights_filename, NUM_ASSETS);
 
     ret_data *dataset = malloc(NUM_ASSETS * sizeof(ret_data));
@@ -57,25 +59,22 @@ int main(int argc, char **argv) {
     time_t t = time(NULL);
     struct tm curr_time = *localtime(&t);
 
+    /* Set up data structs for measuring the time taken to both retrieve
+     * stock data and run the simulations */
     struct timeval retrieval_begin, retrieval_end, sim_begin, sim_end;
     double retrieval_time, sim_time;
-    gettimeofday(&retrieval_begin, NULL);
 
-    int get_from_yahoo = 0;
+    /* Start data retrieval timer */
+    gettimeofday(&retrieval_begin, NULL);
     #pragma omp parallel for num_threads(NUM_ASSETS)
     for (int i = 0; i < NUM_ASSETS; i++) {
 
-        /* For debugging purposes
-        #if defined(_OPENMP)
-            printf("thread num: %d\n", omp_get_num_threads());
-        #endif
-        */
+        /* Fetch price data from Yahoo! Finance */
+        char *price_filename = get_stock_file(ticks[i], curr_time, 6);
+        dataset[i].data = read_price_file(price_filename, &dataset[i].size);
 
-        /*char *price_filename = get_stock_file(ticks[i], curr_time, 6);
-        dataset[i].data = read_price_file(price_filename, &dataset[i].size);*/
-
-        /* TODO: Skip download of data to use
-         * data that has already been retrieved */
+        /* Read the price data from locally-stored files */
+        /*
         char *price_subdir = "data/prices";
         char *price_extension = "csv";
         size_t price_fname_chars = strlen(ticks[i]) + strlen(price_subdir) +
@@ -84,106 +83,85 @@ int main(int argc, char **argv) {
         snprintf(price_filename, price_fname_chars, "%s/%s.%s",
                 price_subdir, ticks[i], price_extension);
         dataset[i].data = read_price_file(price_filename, &dataset[i].size);
-
+        */
 
         assets[i].ticker = malloc((strlen(ticks[i]) + 1) * sizeof(char));
 
-        /* Actually copy the string instead of setting pointers equal so that 
+        /* Actually copy the string instead of setting pointers equal so that
          * the ticks array can be freed */
         strcpy(assets[i].ticker, ticks[i]);
+
+        /* Set the rest of the current asset's attributes */
         assets[i].mean = gsl_stats_mean(dataset[i].data,1,dataset[i].size) * 12;
         assets[i].sigma = gsl_stats_sd(dataset[i].data,1,dataset[i].size) * sqrt(12);
-        //printf("%s's mean: %lg and std: %lg\n", assets[i].ticker,
-                //assets[i].mean, assets[i].sigma);
-
-        /* For now, set all stock weights to be equal */
-        //assets[i].port_weight = 1.0/NUM_ASSETS;
-
         assets[i].port_weight = weights[i];
-
-        //printf("%s\nmu: %lg\nsig: %lg\n", assets[i].ticker, assets[i].mean, assets[i].sigma);
     }
+    /* End data retrieval timer */
     gettimeofday(&retrieval_end, NULL);
-    retrieval_time = retrieval_end.tv_usec - retrieval_begin.tv_usec;
 
     for (int i = 0; i < NUM_ASSETS; i++)
         free(ticks[i]);
     free(ticks);
     free(weights);
 
+    /* Calculate the variance-covariance based on the price datasets of
+     * all assets */
     gsl_matrix *varcovar = calculate_varcovar(dataset, NUM_ASSETS);
     free(dataset);
     perform_cholesky(varcovar, NUM_ASSETS);
     gsl_matrix *cholesky = varcovar;
 
-    //for (int i = 0; i < NUM_ASSETS; i++) {
-    //    for (int j = 0; j < NUM_ASSETS; j++)
-    //        printf("%lg | ", gsl_matrix_get(cholesky, i, j));
-    //    printf("\n");
-    //}
-    
     printf("Finished crunching numbers and getting data for stock returns\n"
             "Beginning simulations\n");
 
     /* This file will contain the final porfolio returns for all runs */
     FILE *results_file = fopen("data/results.txt","w");
-    /* The results that will be displayed on histogram */
     double total_rets[NUM_RUNS];
+
+    /* Start the Monte Carlo simulation timer */
     gettimeofday(&sim_begin, NULL);
-    time_t start = time(NULL), end;
-    unsigned long init_seed = seed;
-    int num_sim_threads = 1;
-    #if defined(_OPENMP)
-        num_sim_threads = omp_get_max_threads();
-    #endif
+
     if(results_file) {
-        /* Each run of this loop is one simulation of portfolio return */
+        /* Each run of this loop is one simulation of portfolio's return */
         #pragma omp parallel for
-        for (int run = 0; run < NUM_RUNS; run++) { 
+        for (int run = 0; run < NUM_RUNS; run++) {
             double total_return = 0;
 
             gsl_rng *rng;
-            if (seed_ptr) {
-                #pragma omp critical
-                {
-                    rng = initialize_rng_with_seed(seed);
-                    /* When seed hits max unsigned long it will wrap to 0 */
-                    seed++; 
-                }
-            } else {
-                rng = initialize_rng();
+            /* Seed is shared, so lock it down when it is being used and
+             * incremented so that no two RNGs are initialized with the
+             * same seed */
+            #pragma omp critical
+            {
+                rng = initialize_rng_with_seed(seed);
+                /* When seed hits max unsigned long it will wrap to 0 */
+                seed++;
             }
-
 
             /* Calculate the monthly portfolio return
              * and add to yearly return accumulator */
-            gsl_vector *rans;
             for (int month = 1; month <= NUM_MONTHS; month++) {
-                rans = corr_norm_rvars(NUM_ASSETS, rng, cholesky);
-
-                //for (int k = 0; k < NUM_ASSETS; k++)
-                //    printf("A random var:%lg\n", gsl_vector_get(rans,k));
-
+                gsl_vector *rans = corr_norm_rvars(NUM_ASSETS, rng, cholesky);
                 double month_ret = one_month_portfolio_return(assets,
                         NUM_ASSETS, rans);
-                //printf("mont_ret: %lg\n", month_ret);
+                gsl_vector_free(rans);
                 total_return += month_ret;
             }
             gsl_rng_free(rng);
-            gsl_vector_free(rans);
 
             total_rets[run] = total_return;
-
-            //printf("Total return: %f%%\n", total_return * 100);
         }
         gettimeofday(&sim_end, NULL);
 
+        /* Calculate time elapsed for data retrieval and simulations */
         retrieval_time = retrieval_end.tv_sec - retrieval_begin.tv_sec;
-        retrieval_time += ((double)(retrieval_end.tv_usec - retrieval_begin.tv_usec)) / 1000000.0;
+        retrieval_time += ((double)(retrieval_end.tv_usec -
+                            retrieval_begin.tv_usec)) / 1000000.0;
 
         sim_time = sim_end.tv_sec - sim_begin.tv_sec;
         sim_time += ((double)(sim_end.tv_usec - sim_begin.tv_usec)) / 1000000.0;
-        printf("Data retrieval time: %lg\nSimulation time: %lg\n", retrieval_time, sim_time);
+        printf("Data retrieval time: %lg\n"
+                "Simulation time: %lg\n", retrieval_time, sim_time);
 
         for (int i = 0; i < NUM_RUNS; i++) {
             fprintf(results_file, "%lg\n", total_rets[i] * 100);
@@ -196,20 +174,6 @@ int main(int argc, char **argv) {
         printf("Mean of annual returns: %lg%%\n"
                 "Standard dev of annual returns: %lg%%\n",
                 res_mean, res_std);
-
-        //printf("seed: %lu", init_seed);
-        //Printing to test file if needed
-        /*FILE *test_file = fopen("data/test_res_acc.csv", "a");
-        if (test_file) {
-           fprintf(test_file, "%d,%d,%d,%d,%d,%lg,%lg,%s,%lg,%lg,%lu,%d\n", 
-                   NUM_ASSETS, NUM_RUNS, NUM_MONTHS, num_sim_threads,
-                   get_from_yahoo, retrieval_time, sim_time, PORT_SUFF,
-                   res_mean, res_std, init_seed, 2);
-        } else {
-            printf("ERROR: File for test results could not be opened\n");
-            exit(1);
-        }
-        fclose(test_file);*/
     } else {
         printf("NO RESULTS FILE\n");
     }
