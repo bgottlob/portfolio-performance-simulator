@@ -39,8 +39,6 @@ char *get_stock_file(char *ticker, struct tm end_date, int num_years) {
             end_date.tm_year + 1900 - num_years, end_date.tm_mon,
             end_date.tm_mday, end_date.tm_year + 1900);
 
-    //printf("url: %s\n", url);
-
     /* Create the file name string, simply the stock ticker with an extension */
     char *ext = "csv";
     char *subdir = "data/prices";
@@ -51,6 +49,7 @@ char *get_stock_file(char *ticker, struct tm end_date, int num_years) {
     size_t num_chars = strlen(subdir) + strlen(tick_upr) + strlen(ext) + 3;
     char *filename = malloc(num_chars * sizeof(char));
     snprintf(filename, num_chars, "%s/%s.%s", subdir, tick_upr, ext);
+    free(tick_upr);
     FILE *file = fopen(filename, "w");
 
     /* libcurl Calls */
@@ -184,11 +183,6 @@ double *read_weight_file(char *filename, const size_t NUM_STOCKS) {
         /* Total up all weights in the array and check if it is equal to 100% */
         for (int i = 0; i < NUM_STOCKS; i++)
             sum += weights[i];
-        //printf("Weights sum %lg\n", sum);
-        /*if (sum != 1.0) {
-            printf("ERROR: Weights do not add up to 100%\n");
-            exit(1);
-        }*/
     } else {
         printf("ERROR: Weights file could not be opened\n");
         exit(1);
